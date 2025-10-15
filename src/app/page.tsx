@@ -12,57 +12,46 @@ function escapeRegExp(str: string) {
 }
 
 function buildMatchRegex(front: string) {
-  // allow decoration when hint contains a word that starts with front,
-  // e.g. front: "bad" matches "bad", "badly", "badness"
-  // match at word boundaries; preserve internal spaces in multi-word fronts
-  // e.g. "contingency plan" should match "contingency plan" and "contingency plans"
+  const normalized = normalizeWord(front)
+  const parts = normalized.split(/\s+/).filter(Boolean).map(escapeRegExp)
+  if (parts.length === 0) return null
 
-  // const parts = normalizeFront(front).split(/\s+/).filter(Boolean).map(escapeRegExp);
-  // if (parts.length === 0) return null;
-  //
-  // // Build a pattern that matches:
-  // // - the exact multi-word phrase
-  // // - optional word suffix on the last token (e.g., "plan" -> "plans", "planned" won't match as a single word suffix if space follows)
-  // // For single-word fronts: allow suffix on that single word.
-  // const last = parts[parts.length - 1];
-  // const head = parts.slice(0, -1).join('\\s+');
-  // const suffix = '[a-z]*'; // simple suffix allowance (ASCII letters)
-  //
-  // let pattern: string;
-  // if (parts.length === 1) {
-  //   pattern = `\\b${last}${suffix}\\b`;
-  // } else {
-  //   // Require earlier words with word boundaries, allow normal whitespace between them.
-  //   // Allow suffix only on the last word.
-  //   pattern = `\\b${head}\\s+${last}${suffix}\\b`;
-  // }
-  const pattern = `\\b${escapeRegExp(normalizeWord(front))}[a-z]*\\b`
-  console.log('Pattern:', pattern)
+  const suffix = '[a-z]*'
+  let pattern: string
 
+  if (parts.length === 1) {
+    pattern = `\\b${parts[0]}${suffix}\\b`
+  } else {
+    const head = parts.slice(0, -1).join('\\s+')
+    const last = parts[parts.length - 1]
+    pattern = `\\b${head}\\s+${last}${suffix}\\b`
+  }
+  // console.log('Pattern:', pattern)
 
-  // Case-insensitive
   return new RegExp(pattern, 'i');
 }
 
 function decorateHint ({ front, hint }: Card) {
-  // Find the front within the hint and replace with the front within <b> element
-  const normalizedFront = normalizeWord(front)
-  const regex = buildMatchRegex(normalizedFront)
+  const regex = buildMatchRegex(front)
   if (!regex) return hint;
 
   const match = regex.exec(hint)
+  if (!match) return hint
 
-  const startIndex = match?.index
-  if (!startIndex) return hint;
-
-  const matchedWords = match
-  console.log(matchedWords)
-  const endIndex = startIndex + matchedWords.length
+  const startIndex = match.index // can be 0
+  const matchedText = match[0]
+  const endIndex = startIndex + matchedText.length
 
   const before = hint.substring(0, startIndex)
   const after = hint.substring(endIndex)
 
-  return (<span>{before} <b className="text-amber-400">{matchedWords}</b>{after}</span>)
+  return (
+    <span>
+      {before}
+      <b className="text-amber-400">{matchedText}</b>
+      {after}
+    </span>
+  )
 }
 
 export default function Home () {
@@ -71,7 +60,7 @@ export default function Home () {
       className="font-sans w-full flex items-center justify-items-center min-h-screen p-2 pb-20 gap-16 sm:p-2">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start w-full">
         <h1 className="text-white text-3xl text-center w-full">Hints</h1>
-        {/*List of hints*/}
+
         <div className="flex flex-col gap-[32px] items-center p-8 w-full">
           {cards.map((card: Card) => (
             <div key={card.id} className="text-white flex items-center w-full justify-between">
