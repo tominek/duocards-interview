@@ -16,7 +16,7 @@ function buildMatchRegex(front: string) {
   const parts = normalized.split(/\s+/).filter(Boolean).map(escapeRegExp)
   if (parts.length === 0) return null
 
-  const suffix = '[a-z]*'
+  const suffix = '\\w*'
   let pattern: string
 
   if (parts.length === 1) {
