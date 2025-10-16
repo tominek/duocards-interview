@@ -28,7 +28,7 @@ function buildMatchRegex(front: string) {
   }
   // console.log('Pattern:', pattern)
 
-  return new RegExp(pattern, 'i');
+  return new RegExp(pattern, 'iu');
 }
 
 function decorateHint ({ front, hint }: Card) {
