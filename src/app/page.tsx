@@ -31,15 +31,14 @@ function buildMatchRegex (front: string, config: LangConfig) {
 
   let pattern: string
 
+  const optionalPrefix = config.allowPrefixes ? `${unicodeChars}*` : ''
   if (parts.length === 1) {
     // If allowPrefixes is true, allow any alphabetic prefix before the first token (e.g., přejít for jít)
-    const optionalPrefix = config.allowPrefixes ? `${unicodeChars}*` : ''
     pattern = `${wb}${optionalPrefix}${parts[0]}${suffix}${we}`
   } else {
     const head = parts.slice(0, -1).join('\\s+')
     const last = parts[parts.length - 1]
     // For multi-word, only allow prefixing on the very first token when enabled
-    const optionalPrefix = config.allowPrefixes ? `${unicodeChars}*` : ''
     pattern = `${wb}${optionalPrefix}${head}\\s+${last}${suffix}${we}`
   }
   // console.log('Pattern:', pattern)
