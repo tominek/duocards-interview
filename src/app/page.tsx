@@ -1,38 +1,54 @@
 import { Card, cards } from '@/resources'
 
-function normalizeWord (word: string) {
+type LangConfig = {
+  members: string[]
+  allowPrefixes: boolean
+}
+
+function normalizeWord (word: string, members: string[]) {
+  const regexp = new RegExp(`^(${members.join('|')})\\s+`, 'g')
+
   return word
     .trim()
     .toLowerCase()
-    .replace(/^(the|to|a|an)\s+/, '')
+    .replace(regexp, '')
 }
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function buildMatchRegex(front: string) {
-  const normalized = normalizeWord(front)
+function buildMatchRegex (front: string, config: LangConfig) {
+  const normalized = normalizeWord(front, config.members)
   const parts = normalized.split(/\s+/).filter(Boolean).map(escapeRegExp)
   if (parts.length === 0) return null
 
-  const suffix = '\\w*'
+  // Use Unicode letter/number marks instead of \w to properly match letters like ř, é, etc.
+  const unicodeChars = '[\\p{L}\\p{M}\\p{N}_]'
+  const suffix = `${unicodeChars}*`
+  const wb = `(?<!${unicodeChars})` // Unicode-aware "word boundary" start
+  const we = `(?!${unicodeChars})`  // Unicode-aware "word boundary" end
+
   let pattern: string
 
   if (parts.length === 1) {
-    pattern = `\\b${parts[0]}${suffix}\\b`
+    // If allowPrefixes is true, allow any alphabetic prefix before the first token (e.g., přejít for jít)
+    const optionalPrefix = config.allowPrefixes ? `${unicodeChars}*` : ''
+    pattern = `${wb}${optionalPrefix}${parts[0]}${suffix}${we}`
   } else {
     const head = parts.slice(0, -1).join('\\s+')
     const last = parts[parts.length - 1]
-    pattern = `\\b${head}\\s+${last}${suffix}\\b`
+    // For multi-word, only allow prefixing on the very first token when enabled
+    const optionalPrefix = config.allowPrefixes ? `${unicodeChars}*` : ''
+    pattern = `${wb}${optionalPrefix}${head}\\s+${last}${suffix}${we}`
   }
   // console.log('Pattern:', pattern)
 
   return new RegExp(pattern, 'iu');
 }
 
-function decorateHint ({ front, hint }: Card) {
-  const regex = buildMatchRegex(front)
+function decorateHint ({ front, hint }: Card, config: LangConfig) {
+  const regex = buildMatchRegex(front, config)
   if (!regex) return hint;
 
   const match = regex.exec(hint)
@@ -55,6 +71,17 @@ function decorateHint ({ front, hint }: Card) {
 }
 
 export default function Home () {
+  // EN
+  // const config: LangConfig = {
+  //   members: ['the', 'to', 'a', 'an'],
+  //   allowPrefixes: false
+  // }
+  // CZ
+  const config: LangConfig = {
+    members: [],
+    allowPrefixes: true
+  }
+
   return (
     <div
       className="font-sans w-full flex items-center justify-items-center min-h-screen p-2 pb-20 gap-16 sm:p-2">
@@ -68,7 +95,7 @@ export default function Home () {
                 {card.front}
               </div>
               <div>
-                {decorateHint(card)}
+                {decorateHint(card, config)}
               </div>
             </div>
           ))}
